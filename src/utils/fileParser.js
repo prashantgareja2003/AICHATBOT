@@ -1,15 +1,13 @@
 import * as XLSX from 'xlsx';
 
 /**
- * File Parser Utility for TigerX AI
- * Handles Excel (.xlsx/.xls), CSV, Text, PDF, Word, and Image/Invoice OCR parsing.
+ * File Parser & Chart Extractor Utility for TigerX AI
  */
 
 export async function parseUploadedFile(file) {
   const fileType = file.name.split('.').pop().toLowerCase();
 
   return new Promise((resolve, reject) => {
-    // 1. Excel files (.xlsx, .xls)
     if (fileType === 'xlsx' || fileType === 'xls') {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -19,24 +17,20 @@ export async function parseUploadedFile(file) {
           const firstSheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[firstSheetName];
           const jsonContent = XLSX.utils.sheet_to_json(worksheet);
-          const rawText = JSON.stringify(jsonContent.slice(0, 50), null, 2);
 
           resolve({
             name: file.name,
             type: 'excel',
             rowsCount: jsonContent.length,
             data: jsonContent,
-            contentPreview: `[Excel Data: ${jsonContent.length} rows loaded from sheet "${firstSheetName}"]\nSample Data:\n${rawText}`
+            contentPreview: `[Excel File: ${file.name} - ${jsonContent.length} rows loaded]\nSample:\n${JSON.stringify(jsonContent.slice(0, 30), null, 2)}`
           });
         } catch (err) {
           reject(new Error(`Failed to parse Excel file: ${err.message}`));
         }
       };
-      reader.onerror = () => reject(new Error("Failed to read Excel file"));
       reader.readAsArrayBuffer(file);
-    }
-    // 2. CSV files
-    else if (fileType === 'csv') {
+    } else if (fileType === 'csv') {
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
@@ -44,66 +38,56 @@ export async function parseUploadedFile(file) {
           const workbook = XLSX.read(text, { type: 'string' });
           const worksheet = workbook.Sheets[workbook.SheetNames[0]];
           const jsonContent = XLSX.utils.sheet_to_json(worksheet);
-          
+
           resolve({
             name: file.name,
             type: 'csv',
             rowsCount: jsonContent.length,
             data: jsonContent,
-            contentPreview: `[CSV File: ${jsonContent.length} records]\nSample:\n${JSON.stringify(jsonContent.slice(0, 30), null, 2)}`
+            contentPreview: `[CSV File: ${file.name} - ${jsonContent.length} rows]\nSample:\n${JSON.stringify(jsonContent.slice(0, 30), null, 2)}`
           });
         } catch (err) {
           reject(new Error(`Failed to parse CSV file: ${err.message}`));
         }
       };
       reader.readAsText(file);
-    }
-    // 3. Text & Code files (.txt, .json, .sql, .log, .js, .py, .md, etc.)
-    else if (['txt', 'json', 'sql', 'log', 'js', 'jsx', 'ts', 'tsx', 'py', 'html', 'css', 'md'].includes(fileType)) {
+    } else if (['txt', 'json', 'sql', 'log', 'js', 'jsx', 'ts', 'tsx', 'py', 'html', 'css', 'md'].includes(fileType)) {
       const reader = new FileReader();
       reader.onload = (e) => {
         const text = e.target.result;
         resolve({
           name: file.name,
           type: 'text',
-          contentPreview: `[Text/Document: ${file.name}]\n${text.slice(0, 10000)}`
+          contentPreview: `[Document: ${file.name}]\n${text.slice(0, 8000)}`
         });
       };
       reader.readAsText(file);
-    }
-    // 4. PDF / Word Documents (.pdf, .docx, .doc)
-    else if (['pdf', 'docx', 'doc'].includes(fileType)) {
+    } else if (['pdf', 'docx', 'doc'].includes(fileType)) {
       const reader = new FileReader();
       reader.onload = (e) => {
         const text = e.target.result;
-        // Basic plain text extraction from binary stream preview
         const cleanText = typeof text === 'string' ? text.replace(/[^\x20-\x7E\n\r\t]/g, ' ') : `[Document Stream: ${file.name}]`;
         resolve({
           name: file.name,
           type: 'doc',
-          contentPreview: `[Document File: ${file.name}]\nExtracted Content:\n${cleanText.slice(0, 8000)}`
+          contentPreview: `[Document File: ${file.name}]\nContent:\n${cleanText.slice(0, 8000)}`
         });
       };
       reader.readAsText(file);
-    }
-    // 5. Images & Invoices (PNG, JPG, JPEG, WEBP) - OCR Simulation & Extraction
-    else if (['png', 'jpg', 'jpeg', 'webp'].includes(fileType)) {
+    } else if (['png', 'jpg', 'jpeg', 'webp'].includes(fileType)) {
       const reader = new FileReader();
       reader.onload = (e) => {
-        const dataUrl = e.target.result;
         resolve({
           name: file.name,
           type: 'image',
-          dataUrl: dataUrl,
-          contentPreview: `[Uploaded Image/Invoice: ${file.name}]\nImage attached. Extract invoice details (Invoice #, Vendor, GST, Date, Amount, Items) or describe image content.`
+          dataUrl: e.target.result,
+          contentPreview: `[Uploaded Image/Invoice: ${file.name}]`
         });
       };
       reader.readAsDataURL(file);
-    }
-    else {
-      // Default Fallback
+    } else {
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = () => {
         resolve({
           name: file.name,
           type: 'other',
@@ -116,21 +100,37 @@ export async function parseUploadedFile(file) {
 }
 
 /**
- * Parses JSON chart data inside response text if formatted in JSON code block
+ * Extracts and normalizes chart JSON data from AI response text
  */
 export function extractChartDataFromResponse(responseText) {
   if (!responseText) return null;
 
-  // Look for ```json chart block
-  const match = responseText.match(/```json\s*chart\s*\n([\s\S]*?)\n```/i) || responseText.match(/```json\s*\n(\{[\s\S]*?"type"\s*:\s*"(?:bar|pie|table)"[\s\S]*?\})\s*\n```/i);
-  
-  if (match && match[1]) {
-    try {
-      const parsed = JSON.parse(match[1]);
-      if (parsed && (parsed.type === 'bar' || parsed.type === 'pie' || parsed.type === 'table') && parsed.data) {
-        return parsed;
+  // Match any json chart block or json block with chart data
+  const jsonRegex = /```json\s*(?:chart)?\s*\n([\s\S]*?)\n```/gi;
+  let match;
+
+  while ((match = jsonRegex.exec(responseText)) !== null) {
+    if (match[1]) {
+      try {
+        const parsed = JSON.parse(match[1].trim());
+        if (parsed && parsed.data && Array.isArray(parsed.data)) {
+          // Normalize data keys (date/category/x -> label, price/value/y/count -> value)
+          const normalizedData = parsed.data.map(item => {
+            const label = item.label || item.date || item.category || item.name || item.x || Object.values(item)[0] || 'Item';
+            const value = item.value !== undefined ? item.value : (item.price !== undefined ? item.price : (item.count !== undefined ? item.count : (item.y !== undefined ? item.y : Object.values(item)[1] || 0)));
+            return { label: String(label), value: Number(value) || 0 };
+          });
+
+          return {
+            title: parsed.title || 'Data Visualizer',
+            type: (parsed.type === 'line' || parsed.type === 'bar') ? 'bar' : (parsed.type === 'pie' ? 'pie' : 'table'),
+            data: normalizedData
+          };
+        }
+      } catch (e) {
+        // Ignore non-chart JSON blocks
       }
-    } catch (e) {}
+    }
   }
 
   return null;

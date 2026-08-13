@@ -14,11 +14,6 @@ import {
   Moon,
   Paperclip,
   X,
-  Code,
-  FileText,
-  FileSpreadsheet,
-  Image as ImageIcon,
-  Sparkles,
   Zap
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -81,7 +76,6 @@ export default function App() {
     return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  // Handle File Uploads (Excel, CSV, PDF, Word, TXT, Images)
   const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
@@ -102,7 +96,6 @@ export default function App() {
     const query = textToSend.trim();
     if ((!query && attachedFiles.length === 0) || isGenerating) return;
 
-    // Combine user prompt with attached file contents
     let fullPromptText = query;
     if (attachedFiles.length > 0) {
       const fileContext = attachedFiles.map(f => `📁 [ATTACHED FILE: ${f.name}]\n${f.contentPreview}`).join('\n\n');
@@ -116,7 +109,6 @@ export default function App() {
       sender: 'user',
       text: displayUserText,
       fullPromptText: fullPromptText,
-      attachedFilesCount: attachedFiles.length,
       timestamp: getTimeString()
     };
 
@@ -229,19 +221,15 @@ export default function App() {
 
   return (
     <div className="app-container">
-      {/* Dev Tools Modal Popup */}
       <DevToolsModal
         isOpen={showDevModal}
         onClose={() => setShowDevModal(false)}
         onSelectPrompt={(prompt) => {
           setInput(prompt);
-          if (textareaRef.current) {
-            textareaRef.current.focus();
-          }
+          if (textareaRef.current) textareaRef.current.focus();
         }}
       />
 
-      {/* Hidden File Input */}
       <input
         ref={fileInputRef}
         type="file"
@@ -267,7 +255,6 @@ export default function App() {
         </div>
 
         <div className="header-actions">
-          {/* Dev Tools Button */}
           <button
             className="icon-btn-header"
             onClick={() => setShowDevModal(true)}
@@ -276,7 +263,6 @@ export default function App() {
             <Zap size={17} color="#FF5F1F" />
           </button>
 
-          {/* Theme Toggle */}
           <button
             className="icon-btn-header"
             onClick={toggleTheme}
@@ -285,7 +271,6 @@ export default function App() {
             {theme === 'light' ? <Moon size={17} /> : <Sun size={17} />}
           </button>
 
-          {/* Clear Chat */}
           <button
             className="icon-btn-header"
             onClick={clearChat}
@@ -307,9 +292,7 @@ export default function App() {
             </div>
 
             <h2>Hello! I'm TigerX 🐅</h2>
-            <p style={{ margin: 0 }}>
-              Upload files (Excel, CSV, PDF, Invoices) or ask for SQL, Code, Charts & Analysis!
-            </p>
+            <p style={{ margin: 0 }}>How can I assist you today?</p>
           </div>
         ) : (
           /* Message List */
@@ -317,7 +300,11 @@ export default function App() {
             {messages.map((msg, index) => {
               const isUser = msg.sender === 'user';
               const chartData = !isUser ? extractChartDataFromResponse(msg.text) : null;
-              const cleanText = !isUser && chartData ? msg.text.replace(/```json\s*chart[\s\S]*?```/gi, '').trim() : msg.text;
+              
+              // Strip raw JSON chart code block from display prose completely
+              const cleanText = !isUser && chartData 
+                ? msg.text.replace(/```json\s*(?:chart)?[\s\S]*?```/gi, '').trim()
+                : msg.text;
 
               return (
                 <div key={msg.id || index} className={`message-wrapper ${isUser ? 'user' : 'assistant'}`}>
@@ -331,24 +318,19 @@ export default function App() {
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxWidth: '100%' }}>
                     <div className="chat-bubble">
-                      {cleanText ? (
+                      {cleanText || chartData ? (
                         <div>
-                          <div style={{ whiteSpace: 'pre-wrap' }}>{cleanText}</div>
+                          {cleanText && <div style={{ whiteSpace: 'pre-wrap' }}>{cleanText}</div>}
 
-                          {/* Render Dynamic Chart if AI generated chart data */}
+                          {/* Render Dynamic SVG Chart if JSON chart data was present */}
                           {chartData && <DataChart chartData={chartData} />}
 
+                          {/* WhatsApp-Style Double Blue Ticks (✓✓) on ALL messages! */}
                           <div className="message-meta">
                             <span>{msg.timestamp || 'Just now'}</span>
-                            {isUser ? (
-                              <span className="blue-tick" title="Seen by TigerX AI">
-                                <CheckCheck size={15} color="#38BDF8" />
-                              </span>
-                            ) : (
-                              <span className="blue-tick" title="Delivered">
-                                <Check size={14} color="#64748B" />
-                              </span>
-                            )}
+                            <span className="blue-tick" title="Read & Delivered">
+                              <CheckCheck size={15} color="#38BDF8" />
+                            </span>
                           </div>
                         </div>
                       ) : isGenerating && index === messages.length - 1 ? (
@@ -421,7 +403,6 @@ export default function App() {
           )}
 
           <div className="floating-pill-input">
-            {/* File Attachment Button */}
             <button
               type="button"
               className="action-icon-btn"
@@ -435,7 +416,7 @@ export default function App() {
             <textarea
               ref={textareaRef}
               className="chat-textarea"
-              placeholder="Ask TigerX or upload files (Excel, CSV, PDF, Invoices)..."
+              placeholder="Ask TigerX anything..."
               rows={1}
               value={input}
               onChange={handleInput}
@@ -443,7 +424,6 @@ export default function App() {
               disabled={isGenerating}
             />
 
-            {/* Mic Dictation */}
             <button
               type="button"
               className="action-icon-btn"
@@ -454,7 +434,6 @@ export default function App() {
               {isListening ? <MicOff size={18} /> : <Mic size={18} />}
             </button>
 
-            {/* Send Button */}
             <button
               type="button"
               className="send-btn-pill"
