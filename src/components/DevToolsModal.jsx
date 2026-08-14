@@ -1,153 +1,167 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
-  Code,
   Database,
   Receipt,
-  FileCode,
+  Code,
   Bug,
+  FileCode,
+  Wrench,
   Terminal,
   Zap,
-  Check,
-  Copy,
-  X,
-  FileSearch,
-  Layers,
-  Wrench
+  X
 } from 'lucide-react';
+import { ThreeDIconBadge, PRESET_3D_CONFIGS } from './ThreeDimensionalIcons';
 
-const DEV_PRESETS = [
+export const DEV_PRESETS = [
   {
     id: 'sql',
     name: 'Natural Language → SQL',
-    icon: Database,
-    prompt: 'Convert to SQL: Show June 2026 attendance for employee 10 from iclock_transaction table with punch_time'
+    shortLabel: 'NL → SQL',
+    desc: 'Translates plain text into runnable SQL queries (SELECT, JOIN, WHERE, GROUP BY)',
+    promptPrefix: 'Translate the following query into clean, formatted SQL code:'
   },
   {
     id: 'invoice',
     name: 'Invoice / Receipt OCR',
-    icon: Receipt,
-    prompt: 'Extract Invoice Details: Invoice Number, Vendor Name, GST/Tax ID, Date, Total Amount, and Items table'
+    shortLabel: 'Invoice OCR',
+    desc: 'Extract Invoice #, Vendor Name, GST/Tax ID, Date, Amount, and Line Items',
+    promptPrefix: 'Extract structured Invoice Details (Invoice #, Vendor, GST, Date, Amount, Items) from:'
   },
   {
     id: 'code-gen',
-    name: 'Code Generator & API',
-    icon: Code,
-    prompt: 'Generate a REST API endpoint in Node.js Express for user authentication with JWT'
+    name: 'Code & API Generator',
+    shortLabel: 'Code Gen',
+    desc: 'Generates clean functions, REST API endpoints, and boilerplate code',
+    promptPrefix: 'Generate clean, production-ready code with comments for:'
   },
   {
     id: 'bug-detector',
-    name: 'Bug Detection & Fix',
-    icon: Bug,
-    prompt: 'Analyze this code for memory leaks, async errors, and potential bugs, then provide optimized refactored code:'
+    name: 'Bug Detection & Optimizer',
+    shortLabel: 'Bug Fixer',
+    desc: 'Detects memory leaks, async bugs, and provides refactored code',
+    promptPrefix: 'Analyze for bugs, memory leaks, and provide refactored optimized code for:'
   },
   {
     id: 'sp-gen',
     name: 'Stored Procedure Generator',
-    icon: FileCode,
-    prompt: 'Write a MySQL Stored Procedure for monthly employee attendance summary report'
+    shortLabel: 'Stored Proc',
+    desc: 'Creates MySQL/SQL Server stored procedures and views',
+    promptPrefix: 'Write a database Stored Procedure for:'
   },
   {
     id: 'json-regex',
     name: 'JSON Formatter & Regex',
-    icon: Wrench,
-    prompt: 'Generate regex pattern to validate email addresses and phone numbers, with sample JSON payload'
+    shortLabel: 'JSON / Regex',
+    desc: 'Generates Regex patterns, schema validations, and formats JSON payloads',
+    promptPrefix: 'Generate regex validation patterns and JSON schemas for:'
   },
   {
     id: 'error-log',
     name: 'Error Log & Git Analyzer',
-    icon: Terminal,
-    prompt: 'Analyze this error stack trace and explain root cause and step-by-step fix:'
+    shortLabel: 'Log Analyzer',
+    desc: 'Explains error stack traces, git conflicts, and step-by-step fixes',
+    promptPrefix: 'Analyze this error stack trace and explain root cause and fix for:'
   }
 ];
 
-export const DevToolsModal = ({ isOpen, onClose, onSelectPrompt }) => {
+export const DevToolsModal = ({ isOpen, onClose, onSelectMode }) => {
   if (!isOpen) return null;
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0, left: 0, right: 0, bottom: 0,
-      background: 'rgba(0, 0, 0, 0.65)',
-      backdropFilter: 'blur(8px)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 100,
-      animation: 'fadeIn 0.25s ease-out'
-    }} onClick={onClose}>
-      <div style={{
-        width: '90%',
-        maxWidth: '620px',
-        background: 'var(--bg-glass-card)',
-        border: 'var(--card-border)',
-        borderRadius: '20px',
-        padding: '24px',
-        boxShadow: 'var(--shadow-md), 0 0 40px rgba(255, 95, 31, 0.2)',
-        backdropFilter: 'blur(24px)',
-        position: 'relative'
-      }} onClick={(e) => e.stopPropagation()}>
+    <div
+      style={{
+        position: 'fixed',
+        top: 0, left: 0, right: 0, bottom: 0,
+        background: 'rgba(0, 0, 0, 0.75)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 100,
+        padding: '20px',
+        animation: 'fadeIn 0.25s ease-out'
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          width: '95%',
+          maxWidth: '780px',
+          background: 'var(--bg-glass-card)',
+          border: 'var(--card-border)',
+          borderRadius: '24px',
+          padding: '28px 32px',
+          boxShadow: 'var(--shadow-md), 0 0 60px rgba(255, 95, 31, 0.25)',
+          backdropFilter: 'blur(28px)',
+          position: 'relative'
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
 
         {/* Modal Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px', borderBottom: '1px solid rgba(128,128,128,0.2)', paddingBottom: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(255, 95, 31, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Zap size={20} color="#FF5F1F" />
-            </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '22px', borderBottom: '1px solid rgba(128,128,128,0.2)', paddingBottom: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <ThreeDIconBadge
+              icon={Zap}
+              gradient="linear-gradient(135deg, #FF5F1F 0%, #FF8C42 100%)"
+              shadowColor="rgba(255, 95, 31, 0.5)"
+              badgeSize={46}
+              size={23}
+            />
             <div>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>
-                TigerX Developer Power Tools 💻
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>
+                tiger<span style={{ color: '#FF5F1F' }}>X</span> Power Modes
               </h3>
-              <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0 }}>
-                Instant prompts for SQL generation, OCR, Code Optimization & Analysis
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: 0 }}>
+                Select an AI mode to attach an active mode chip to your chat dock
               </p>
             </div>
           </div>
 
-          <button className="icon-btn-header" onClick={onClose} style={{ width: '32px', height: '32px' }}>
-            <X size={18} />
+          <button className="icon-btn-header" onClick={onClose} style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(128,128,128,0.15)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <X size={20} color="var(--text-main)" />
           </button>
         </div>
 
-        {/* Preset Cards Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px', maxHeight: '420px', overflowY: 'auto', paddingRight: '4px' }}>
+        {/* 2-Column Responsive Grid without any Scrolling */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '14px' }}>
           {DEV_PRESETS.map((preset) => {
-            const Icon = preset.icon;
+            const config = PRESET_3D_CONFIGS[preset.id];
             return (
               <div
                 key={preset.id}
                 onClick={() => {
-                  onSelectPrompt(preset.prompt);
+                  onSelectMode(preset);
                   onClose();
                 }}
+                className="threed-preset-card"
                 style={{
                   background: 'var(--input-bg)',
                   border: 'var(--card-border)',
-                  borderRadius: '12px',
-                  padding: '14px',
+                  borderRadius: '16px',
+                  padding: '16px 18px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
+                  transition: 'all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
                   display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '12px'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = '#FF5F1F';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = 'transparent';
-                  e.currentTarget.style.transform = 'translateY(0)';
+                  alignItems: 'center',
+                  gap: '14px',
+                  boxShadow: '0 4px 14px rgba(0,0,0,0.06)'
                 }}
               >
-                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(255, 95, 31, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Icon size={18} color="#FF5F1F" />
-                </div>
+                <ThreeDIconBadge
+                  icon={config.icon}
+                  gradient={config.gradient}
+                  shadowColor={config.shadowColor}
+                  badgeSize={44}
+                  size={21}
+                />
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: '0.86rem', color: 'var(--text-main)', marginBottom: '4px' }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-main)', marginBottom: '3px' }}>
                     {preset.name}
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineClamp: 2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                    {preset.prompt}
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                    {preset.desc}
                   </div>
                 </div>
               </div>

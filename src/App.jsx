@@ -20,7 +20,10 @@ import confetti from 'canvas-confetti';
 import { TigerMascot } from './components/TigerMascot';
 import { DataChart } from './components/DataChart';
 import { DevToolsModal } from './components/DevToolsModal';
+import { MarkdownRenderer } from './components/MarkdownRenderer';
+import { ThreeDIconBadge } from './components/ThreeDimensionalIcons';
 import { parseUploadedFile, extractChartDataFromResponse } from './utils/fileParser';
+import tigerxLogoImg from './assets/tigerx-logo.png';
 import {
   streamGroqChat,
   DEFAULT_GROQ_KEY,
@@ -34,6 +37,7 @@ export default function App() {
   });
   const [input, setInput] = useState('');
   const [attachedFiles, setAttachedFiles] = useState([]);
+  const [activeMode, setActiveMode] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem('tigerx_theme') || 'dark');
   const [copiedIndex, setCopiedIndex] = useState(null);
@@ -96,10 +100,12 @@ export default function App() {
     const query = textToSend.trim();
     if ((!query && attachedFiles.length === 0) || isGenerating) return;
 
-    let fullPromptText = query;
+    let promptPrefix = activeMode ? `${activeMode.promptPrefix}\n` : '';
+    let fullPromptText = `${promptPrefix}${query}`;
+
     if (attachedFiles.length > 0) {
       const fileContext = attachedFiles.map(f => `📁 [ATTACHED FILE: ${f.name}]\n${f.contentPreview}`).join('\n\n');
-      fullPromptText = `${query ? query + '\n\n' : ''}${fileContext}`;
+      fullPromptText = `${fullPromptText ? fullPromptText + '\n\n' : ''}${fileContext}`;
     }
 
     const displayUserText = query || `Uploaded ${attachedFiles.length} file(s): ${attachedFiles.map(f => f.name).join(', ')}`;
@@ -109,6 +115,7 @@ export default function App() {
       sender: 'user',
       text: displayUserText,
       fullPromptText: fullPromptText,
+      modeLabel: activeMode ? activeMode.name : null,
       timestamp: getTimeString()
     };
 
@@ -137,7 +144,7 @@ export default function App() {
         },
         onFinish: () => setIsGenerating(false),
         onError: (err) => {
-          setMessages(prev => prev.map(msg => msg.id === botMessageId ? { ...msg, text: `⚠️ **TigerX Error**: ${err.message || 'Failed to reach Groq API.'}` } : msg));
+          setMessages(prev => prev.map(msg => msg.id === botMessageId ? { ...msg, text: `⚠️ **tigerX Error**: ${err.message || 'Failed to reach Groq API.'}` } : msg));
           setIsGenerating(false);
         }
       });
@@ -153,11 +160,11 @@ export default function App() {
     }
   };
 
+  // Instant smooth clear without native browser confirm alert boxes!
   const clearChat = () => {
-    if (window.confirm('Clear conversation history?')) {
-      setMessages([]);
-      localStorage.removeItem('tigerx_chat_history');
-    }
+    setMessages([]);
+    localStorage.removeItem('tigerx_chat_history');
+    setActiveMode(null);
   };
 
   const copyToClipboard = (text, index) => {
@@ -212,8 +219,8 @@ export default function App() {
 
   const triggerRoar = () => {
     confetti({
-      particleCount: 45,
-      spread: 65,
+      particleCount: 50,
+      spread: 70,
       origin: { y: 0.6 },
       colors: ['#FF5F1F', '#FF8C42', '#38BDF8', '#FFFFFF']
     });
@@ -221,15 +228,17 @@ export default function App() {
 
   return (
     <div className="app-container">
+      {/* Dev Tools Power Modes Modal */}
       <DevToolsModal
         isOpen={showDevModal}
         onClose={() => setShowDevModal(false)}
-        onSelectPrompt={(prompt) => {
-          setInput(prompt);
+        onSelectMode={(modeObj) => {
+          setActiveMode(modeObj);
           if (textareaRef.current) textareaRef.current.focus();
         }}
       />
 
+      {/* Hidden File Input */}
       <input
         ref={fileInputRef}
         type="file"
@@ -239,14 +248,17 @@ export default function App() {
         style={{ display: 'none' }}
       />
 
-      {/* Navbar */}
+      {/* Header Navbar with 3D SVG Badges */}
       <header className="tiger-header">
         <div className="header-brand">
-          <div className="brand-avatar" onClick={triggerRoar} style={{ cursor: 'pointer' }} title="Click for Tiger Sparkle!">
-            <TigerMascot size={32} interactive={false} />
+          <div className="brand-avatar" onClick={triggerRoar} style={{ cursor: 'pointer', overflow: 'hidden' }} title="tigerX — AI. SMARTER. BOLDER.">
+            <img src={tigerxLogoImg} alt="tigerX" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
           <div className="header-title-group">
-            <h1>TigerX AI</h1>
+            <h1>
+              tiger<span style={{ color: '#FF5F1F' }}>X</span>
+              <span className="brand-slogan-badge">AI. SMARTER. BOLDER.</span>
+            </h1>
             <div className="status-indicator">
               <span className="status-dot"></span>
               <span>Ready to assist you</span>
@@ -254,31 +266,52 @@ export default function App() {
           </div>
         </div>
 
+        {/* Navbar Actions with 3D SVG Gradient Icon Buttons */}
         <div className="header-actions">
-          <button
-            className="icon-btn-header"
+          {/* 3D Power Modes Button */}
+          <div
             onClick={() => setShowDevModal(true)}
-            title="Developer Power Tools (SQL, Invoice OCR, Code Gen)"
+            style={{ cursor: 'pointer' }}
+            title="tigerX Power Modes (SQL, Invoice OCR, Code Gen)"
           >
-            <Zap size={17} color="#FF5F1F" />
-          </button>
+            <ThreeDIconBadge
+              icon={Zap}
+              gradient={activeMode ? 'linear-gradient(135deg, #FF5F1F 0%, #FF3D00 100%)' : 'linear-gradient(135deg, #FF5F1F 0%, #FF8C42 100%)'}
+              shadowColor="rgba(255, 95, 31, 0.5)"
+              badgeSize={38}
+              size={18}
+            />
+          </div>
 
-          <button
-            className="icon-btn-header"
+          {/* 3D Theme Switcher Button */}
+          <div
             onClick={toggleTheme}
+            style={{ cursor: 'pointer' }}
             title={theme === 'light' ? "Switch to Dark Tiger Glass Mode" : "Switch to Light Smoke White Mode"}
           >
-            {theme === 'light' ? <Moon size={17} /> : <Sun size={17} />}
-          </button>
+            <ThreeDIconBadge
+              icon={theme === 'light' ? Moon : Sun}
+              gradient={theme === 'light' ? 'linear-gradient(135deg, #6366F1 0%, #4338CA 100%)' : 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)'}
+              shadowColor={theme === 'light' ? 'rgba(99, 102, 241, 0.45)' : 'rgba(245, 158, 11, 0.45)'}
+              badgeSize={38}
+              size={18}
+            />
+          </div>
 
-          <button
-            className="icon-btn-header"
+          {/* 3D Clear History Button - Instant action without browser confirm alert! */}
+          <div
             onClick={clearChat}
-            disabled={messages.length === 0}
+            style={{ cursor: messages.length === 0 ? 'not-allowed' : 'pointer', opacity: messages.length === 0 ? 0.45 : 1 }}
             title="Clear Chat History"
           >
-            <Trash2 size={17} />
-          </button>
+            <ThreeDIconBadge
+              icon={Trash2}
+              gradient="linear-gradient(135deg, #EF4444 0%, #B91C1C 100%)"
+              shadowColor="rgba(239, 68, 68, 0.45)"
+              badgeSize={38}
+              size={18}
+            />
+          </div>
         </div>
       </header>
 
@@ -291,8 +324,10 @@ export default function App() {
               <TigerMascot size={110} isTalking={isGenerating} interactive={true} />
             </div>
 
-            <h2>Hello! I'm TigerX 🐅</h2>
-            <p style={{ margin: 0 }}>How can I assist you today?</p>
+            <h2>Hello! I'm tiger<span style={{ color: '#FF5F1F' }}>X</span> 🐅</h2>
+            <p style={{ margin: 0, fontWeight: 500, color: 'var(--text-muted)' }}>
+              AI. SMARTER. BOLDER. How can I assist you today?
+            </p>
           </div>
         ) : (
           /* Message List */
@@ -301,7 +336,6 @@ export default function App() {
               const isUser = msg.sender === 'user';
               const chartData = !isUser ? extractChartDataFromResponse(msg.text) : null;
               
-              // Strip raw JSON chart code block from display prose completely
               const cleanText = !isUser && chartData 
                 ? msg.text.replace(/```json\s*(?:chart)?[\s\S]*?```/gi, '').trim()
                 : msg.text;
@@ -320,12 +354,36 @@ export default function App() {
                     <div className="chat-bubble">
                       {cleanText || chartData ? (
                         <div>
-                          {cleanText && <div style={{ whiteSpace: 'pre-wrap' }}>{cleanText}</div>}
+                          {/* Mode Tag inside user message */}
+                          {isUser && msg.modeLabel && (
+                            <div style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              background: 'rgba(255, 255, 255, 0.25)',
+                              padding: '2px 8px',
+                              borderRadius: '999px',
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              marginBottom: '6px'
+                            }}>
+                              <Zap size={11} color="#FFFFFF" />
+                              <span>{msg.modeLabel}</span>
+                            </div>
+                          )}
 
-                          {/* Render Dynamic SVG Chart if JSON chart data was present */}
+                          {cleanText && (
+                            isUser ? (
+                              <div style={{ whiteSpace: 'pre-wrap' }}>{cleanText}</div>
+                            ) : (
+                              <MarkdownRenderer content={cleanText} />
+                            )
+                          )}
+
+                          {/* Dynamic SVG Chart */}
                           {chartData && <DataChart chartData={chartData} />}
 
-                          {/* WhatsApp-Style Double Blue Ticks (✓✓) on ALL messages! */}
+                          {/* WhatsApp-Style Double Blue Ticks */}
                           <div className="message-meta">
                             <span>{msg.timestamp || 'Just now'}</span>
                             <span className="blue-tick" title="Read & Delivered">
@@ -368,11 +426,41 @@ export default function App() {
           </div>
         )}
 
-        {/* Floating Bottom Input Pill */}
+        {/* Floating Bottom Input Dock */}
         <div className="input-dock">
-          {/* Attached Files Preview Bar */}
-          {attachedFiles.length > 0 && (
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '6px' }}>
+          {/* Active Mode Chip & Attached Files Bar */}
+          {(activeMode || attachedFiles.length > 0) && (
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '6px', alignItems: 'center' }}>
+              {/* Active Mode Chip */}
+              {activeMode && (
+                <div
+                  style={{
+                    background: 'linear-gradient(135deg, #FF5F1F 0%, #FF8C42 100%)',
+                    color: '#FFFFFF',
+                    borderRadius: '999px',
+                    padding: '4px 12px',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    boxShadow: '0 4px 12px rgba(255, 95, 31, 0.4), inset 0 1px 1px rgba(255,255,255,0.4)',
+                    animation: 'fadeIn 0.2s ease-out'
+                  }}
+                >
+                  <Zap size={13} color="#FFFFFF" />
+                  <span>Mode: {activeMode.name}</span>
+                  <button
+                    onClick={() => setActiveMode(null)}
+                    style={{ background: 'transparent', border: 'none', color: '#FFFFFF', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '0 2px' }}
+                    title="Remove Mode"
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+              )}
+
+              {/* Attached Files */}
               {attachedFiles.map((file, idx) => (
                 <div
                   key={idx}
@@ -416,7 +504,7 @@ export default function App() {
             <textarea
               ref={textareaRef}
               className="chat-textarea"
-              placeholder="Ask TigerX anything..."
+              placeholder={activeMode ? `Type for ${activeMode.name}...` : "Ask tigerX anything..."}
               rows={1}
               value={input}
               onChange={handleInput}
